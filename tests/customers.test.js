@@ -1,205 +1,79 @@
-const request = require('supertest');
-const { app, server } = require('../src/index');
-const { db } = require('../src/db/database');
+const { TestData } = require('./utils/testHelpers');
 
 describe('Customer API Endpoints', () => {
-  // Close server after all tests
-  afterAll((done) => {
-    server.close(done);
-  });
 
   describe('GET /api/customers', () => {
     it('should return all customers', async () => {
-      const res = await request(app).get('/api/customers');
-      
-      expect(res.statusCode).toEqual(200);
-      expect(Array.isArray(res.body)).toBeTruthy();
-      expect(res.body.length).toBeGreaterThan(0);
+      await testHelpers.testGetAll('/api/customers', ['name', 'surname', 'email']);
     });
   });
 
   describe('GET /api/customers/:id', () => {
     it('should return a customer by ID', async () => {
-      const res = await request(app).get('/api/customers/1');
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('id', 1);
-      expect(res.body).toHaveProperty('name');
-      expect(res.body).toHaveProperty('surname');
-      expect(res.body).toHaveProperty('email');
+      await testHelpers.testGetById('/api/customers', 1, ['name', 'surname', 'email']);
     });
 
     it('should return 404 for non-existent customer', async () => {
-      const res = await request(app).get('/api/customers/999');
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testGetByIdNotFound('/api/customers');
     });
 
     it('should return 400 for invalid ID format', async () => {
-      const res = await request(app).get('/api/customers/invalid');
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testGetByIdInvalidFormat('/api/customers');
     });
   });
 
   describe('POST /api/customers', () => {
     it('should create a new customer', async () => {
-      const newCustomer = {
-        name: 'Test',
-        surname: 'User',
-        email: 'test.user@example.com'
-      };
-
-      const res = await request(app)
-        .post('/api/customers')
-        .send(newCustomer);
-      
-      expect(res.statusCode).toEqual(201);
-      expect(res.body).toHaveProperty('id');
-      expect(res.body).toHaveProperty('name', newCustomer.name);
-      expect(res.body).toHaveProperty('surname', newCustomer.surname);
-      expect(res.body).toHaveProperty('email', newCustomer.email);
+      await testHelpers.testCreate('/api/customers', TestData.customer.valid());
     });
 
     it('should return 400 for missing required fields', async () => {
-      const invalidCustomer = {
-        name: 'Test'
-        // Missing surname and email
-      };
-
-      const res = await request(app)
-        .post('/api/customers')
-        .send(invalidCustomer);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testCreateValidationError('/api/customers', TestData.customer.invalid.missingFields());
     });
 
     it('should return 400 for invalid email format', async () => {
-      const invalidCustomer = {
-        name: 'Test',
-        surname: 'User',
-        email: 'invalid-email'
-      };
-
-      const res = await request(app)
-        .post('/api/customers')
-        .send(invalidCustomer);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testCreateValidationError('/api/customers', TestData.customer.invalid.invalidEmail());
     });
   });
 
   describe('PUT /api/customers/:id', () => {
     it('should update an existing customer', async () => {
-      const updatedCustomer = {
-        name: 'Updated',
-        surname: 'User',
-        email: 'updated.user@example.com'
-      };
-
-      const res = await request(app)
-        .put('/api/customers/1')
-        .send(updatedCustomer);
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('id', 1);
-      expect(res.body).toHaveProperty('name', updatedCustomer.name);
-      expect(res.body).toHaveProperty('surname', updatedCustomer.surname);
-      expect(res.body).toHaveProperty('email', updatedCustomer.email);
+      await testHelpers.testUpdate('/api/customers', 1, TestData.customer.update());
     });
 
     it('should return 404 for non-existent customer', async () => {
-      const updatedCustomer = {
-        name: 'Updated',
-        surname: 'User',
-        email: 'updated.user@example.com'
-      };
-
-      const res = await request(app)
-        .put('/api/customers/999')
-        .send(updatedCustomer);
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testUpdateNotFound('/api/customers', 999, TestData.customer.update());
     });
 
     it('should return 400 for invalid data', async () => {
-      const invalidCustomer = {
-        name: 'Updated'
-        // Missing surname and email
-      };
-
-      const res = await request(app)
-        .put('/api/customers/1')
-        .send(invalidCustomer);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testUpdateValidationError('/api/customers', 1, TestData.customer.invalid.missingFields());
     });
   });
 
   describe('DELETE /api/customers/:id', () => {
     it('should delete an existing customer', async () => {
-      // Create a customer to delete
-      const newCustomer = {
-        name: 'Delete',
-        surname: 'Me',
-        email: 'delete.me@example.com'
-      };
-
-      const createRes = await request(app)
-        .post('/api/customers')
-        .send(newCustomer);
+      // Create a customer to delete using helper
+      const customerId = await testHelpers.createTestItem('/api/customers', TestData.customer.valid());
       
-      const customerId = createRes.body.id;
-
-      const res = await request(app).delete(`/api/customers/${customerId}`);
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('message');
+      // Test deletion
+      await testHelpers.testDelete('/api/customers', customerId);
       
       // Verify customer is deleted
-      const getRes = await request(app).get(`/api/customers/${customerId}`);
-      expect(getRes.statusCode).toEqual(404);
+      await testHelpers.testGetByIdNotFound('/api/customers', customerId);
     });
 
     it('should return 404 for non-existent customer', async () => {
-      const res = await request(app).delete('/api/customers/999');
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testDeleteNotFound('/api/customers');
     });
 
     it('should return 400 for customer with orders', async () => {
-      // Create an order for the first customer
-      const order = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
-
-      await request(app)
-        .post('/api/orders')
-        .send(order);
+      // Create an order for the first customer using test data
+      const order = TestData.order.valid();
+      await testHelpers.createTestItem('/api/orders', order);
       
-      // Try to delete the customer
-      const res = await request(app).delete('/api/customers/1');
+      // Try to delete the customer - should fail due to business rule
+      const request = require('supertest');
+      const res = await request(testApp).delete('/api/customers/1');
       
       expect(res.statusCode).toEqual(400);
       expect(res.body).toHaveProperty('error', true);

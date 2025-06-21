@@ -1,40 +1,15 @@
-const request = require('supertest');
-const { app, server } = require('../src/index');
-const { db } = require('../src/db/database');
+const { TestData } = require('./utils/testHelpers');
 
 describe('Order API Endpoints', () => {
-  // Close server after all tests
-  afterAll((done) => {
-    server.close(done);
-  });
 
   describe('GET /api/orders', () => {
     it('should return all orders', async () => {
       // First create an order to ensure there's at least one
-      const newOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
-
-      await request(app)
-        .post('/api/orders')
-        .send(newOrder);
+      await testHelpers.createTestItem('/api/orders', TestData.order.valid());
       
-      const res = await request(app).get('/api/orders');
+      const res = await testHelpers.testGetAll('/api/orders', ['customer', 'items']);
       
-      expect(res.statusCode).toEqual(200);
-      expect(Array.isArray(res.body)).toBeTruthy();
-      expect(res.body.length).toBeGreaterThan(0);
-      
-      // Verify order has customer and items
-      expect(res.body[0]).toHaveProperty('id');
-      expect(res.body[0]).toHaveProperty('customer');
-      expect(res.body[0]).toHaveProperty('items');
+      // Verify order has customer and items with proper structure
       expect(Array.isArray(res.body[0].items)).toBeTruthy();
       expect(res.body[0].items[0]).toHaveProperty('shopItem');
     });
@@ -43,225 +18,80 @@ describe('Order API Endpoints', () => {
   describe('GET /api/orders/:id', () => {
     it('should return an order by ID', async () => {
       // First create an order to get its ID
-      const newOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
+      const orderId = await testHelpers.createTestItem('/api/orders', TestData.order.valid());
 
-      const createRes = await request(app)
-        .post('/api/orders')
-        .send(newOrder);
+      const res = await testHelpers.testGetById('/api/orders', orderId, ['customer', 'items']);
       
-      const orderId = createRes.body.id;
-
-      const res = await request(app).get(`/api/orders/${orderId}`);
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('id', orderId);
-      expect(res.body).toHaveProperty('customer');
-      expect(res.body.customer).toHaveProperty('id', newOrder.customerId);
-      expect(res.body).toHaveProperty('items');
+      expect(res.body.customer).toHaveProperty('id', 1);
       expect(Array.isArray(res.body.items)).toBeTruthy();
       expect(res.body.items.length).toBe(1);
       expect(res.body.items[0]).toHaveProperty('shopItem');
-      expect(res.body.items[0].shopItem).toHaveProperty('id', newOrder.items[0].shopItemId);
-      expect(res.body.items[0]).toHaveProperty('quantity', newOrder.items[0].quantity);
+      expect(res.body.items[0].shopItem).toHaveProperty('id', 1);
+      expect(res.body.items[0]).toHaveProperty('quantity', 2);
     });
 
     it('should return 404 for non-existent order', async () => {
-      const res = await request(app).get('/api/orders/999');
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testGetByIdNotFound('/api/orders');
     });
 
     it('should return 400 for invalid ID format', async () => {
-      const res = await request(app).get('/api/orders/invalid');
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testGetByIdInvalidFormat('/api/orders');
     });
   });
 
   describe('POST /api/orders', () => {
     it('should create a new order', async () => {
-      const newOrder = {
-        customerId: 2,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 1
-          },
-          {
-            shopItemId: 2,
-            quantity: 3
-          }
-        ]
-      };
-
-      const res = await request(app)
-        .post('/api/orders')
-        .send(newOrder);
+      const res = await testHelpers.testCreate('/api/orders', TestData.order.withMultipleItems());
       
-      expect(res.statusCode).toEqual(201);
-      expect(res.body).toHaveProperty('id');
       expect(res.body).toHaveProperty('customer');
-      expect(res.body.customer).toHaveProperty('id', newOrder.customerId);
+      expect(res.body.customer).toHaveProperty('id', 2);
       expect(res.body).toHaveProperty('items');
       expect(Array.isArray(res.body.items)).toBeTruthy();
       expect(res.body.items.length).toBe(2);
       expect(res.body.items[0]).toHaveProperty('shopItem');
-      expect(res.body.items[0].shopItem).toHaveProperty('id', newOrder.items[0].shopItemId);
-      expect(res.body.items[0]).toHaveProperty('quantity', newOrder.items[0].quantity);
+      expect(res.body.items[0].shopItem).toHaveProperty('id', 1);
+      expect(res.body.items[0]).toHaveProperty('quantity', 1);
     });
 
     it('should return 400 for missing required fields', async () => {
-      const invalidOrder = {
-        customerId: 1
-        // Missing items
-      };
-
-      const res = await request(app)
-        .post('/api/orders')
-        .send(invalidOrder);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testCreateValidationError('/api/orders', TestData.order.invalid.missingCustomer());
     });
 
     it('should return 400 for invalid customer ID', async () => {
-      const invalidOrder = {
-        customerId: 999, // Non-existent customer
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
-
-      const res = await request(app)
-        .post('/api/orders')
-        .send(invalidOrder);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testCreateValidationError('/api/orders', TestData.order.invalid.invalidCustomer());
     });
 
     it('should return 400 for invalid shop item ID', async () => {
-      const invalidOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 999, // Non-existent shop item
-            quantity: 2
-          }
-        ]
-      };
-
-      const res = await request(app)
-        .post('/api/orders')
-        .send(invalidOrder);
-      
-      expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testCreateValidationError('/api/orders', TestData.order.invalid.invalidShopItem());
     });
   });
 
   describe('PUT /api/orders/:id', () => {
     it('should update an existing order', async () => {
       // First create an order to update
-      const newOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
+      const orderId = await testHelpers.createTestItem('/api/orders', TestData.order.valid());
 
-      const createRes = await request(app)
-        .post('/api/orders')
-        .send(newOrder);
+      const res = await testHelpers.testUpdate('/api/orders', orderId, TestData.order.update());
       
-      const orderId = createRes.body.id;
-
-      const updatedOrder = {
-        customerId: 2, // Change customer
-        items: [
-          {
-            shopItemId: 2, // Change item
-            quantity: 5 // Change quantity
-          }
-        ]
-      };
-
-      const res = await request(app)
-        .put(`/api/orders/${orderId}`)
-        .send(updatedOrder);
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('id', orderId);
       expect(res.body).toHaveProperty('customer');
-      expect(res.body.customer).toHaveProperty('id', updatedOrder.customerId);
+      expect(res.body.customer).toHaveProperty('id', 2);
       expect(res.body).toHaveProperty('items');
       expect(Array.isArray(res.body.items)).toBeTruthy();
       expect(res.body.items.length).toBe(1);
       expect(res.body.items[0]).toHaveProperty('shopItem');
-      expect(res.body.items[0].shopItem).toHaveProperty('id', updatedOrder.items[0].shopItemId);
-      expect(res.body.items[0]).toHaveProperty('quantity', updatedOrder.items[0].quantity);
+      expect(res.body.items[0].shopItem).toHaveProperty('id', 2);
+      expect(res.body.items[0]).toHaveProperty('quantity', 1);
     });
 
     it('should return 404 for non-existent order', async () => {
-      const updatedOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
-
-      const res = await request(app)
-        .put('/api/orders/999')
-        .send(updatedOrder);
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testUpdateNotFound('/api/orders', 999, TestData.order.update());
     });
 
     it('should return 400 for invalid data', async () => {
       // First create an order to update
-      const newOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
+      const orderId = await testHelpers.createTestItem('/api/orders', TestData.order.valid());
 
-      const createRes = await request(app)
-        .post('/api/orders')
-        .send(newOrder);
-      
-      const orderId = createRes.body.id;
-
-      const invalidOrder = {
+      const invalidData = {
         customerId: 1,
         items: [
           {
@@ -271,9 +101,10 @@ describe('Order API Endpoints', () => {
         ]
       };
 
-      const res = await request(app)
+      const request = require('supertest');
+      const res = await request(testApp)
         .put(`/api/orders/${orderId}`)
-        .send(invalidOrder);
+        .send(invalidData);
       
       expect(res.statusCode).toEqual(400);
       expect(res.body).toHaveProperty('error', true);
@@ -283,40 +114,18 @@ describe('Order API Endpoints', () => {
 
   describe('DELETE /api/orders/:id', () => {
     it('should delete an existing order', async () => {
-      // First create an order to delete
-      const newOrder = {
-        customerId: 1,
-        items: [
-          {
-            shopItemId: 1,
-            quantity: 2
-          }
-        ]
-      };
+      // First create an order to delete using helper
+      const orderId = await testHelpers.createTestItem('/api/orders', TestData.order.valid());
 
-      const createRes = await request(app)
-        .post('/api/orders')
-        .send(newOrder);
-      
-      const orderId = createRes.body.id;
-
-      const res = await request(app).delete(`/api/orders/${orderId}`);
-      
-      expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('success', true);
-      expect(res.body).toHaveProperty('message');
+      // Test deletion
+      await testHelpers.testDelete('/api/orders', orderId);
       
       // Verify order is deleted
-      const getRes = await request(app).get(`/api/orders/${orderId}`);
-      expect(getRes.statusCode).toEqual(404);
+      await testHelpers.testGetByIdNotFound('/api/orders', orderId);
     });
 
     it('should return 404 for non-existent order', async () => {
-      const res = await request(app).delete('/api/orders/999');
-      
-      expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', true);
-      expect(res.body).toHaveProperty('message');
+      await testHelpers.testDeleteNotFound('/api/orders');
     });
   });
 });

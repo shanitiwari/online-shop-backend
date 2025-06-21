@@ -2,7 +2,7 @@
  * Global error handling middleware
  */
 exports.errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
+//  console.error(err.stack);
   
   // Handle validation errors (400)
   if (err.name === 'ValidationError') {

@@ -34,15 +34,15 @@ const seedDatabase = () => {
   resetDatabase();
   // Add customers
   db.customers.push(
-    { id: db.customerIdCounter++, name: "Alice", email: "alice@example.com" },
-    { id: db.customerIdCounter++, name: "Bob", email: "bob@example.com" },
-    { id: db.customerIdCounter++, name: "Charlie", email: "charlie@example.com" }
+    { id: db.customerIdCounter++, name: "Alice", surname: "Johnson", email: "alice@example.com" },
+    { id: db.customerIdCounter++, name: "Bob", surname: "Smith", email: "bob@example.com" },
+    { id: db.customerIdCounter++, name: "Charlie", surname: "Brown", email: "charlie@example.com" }
   );
   // Add categories
   db.categories.push(
-    { id: db.categoryIdCounter++, name: "Electronics" },
-    { id: db.categoryIdCounter++, name: "Books" },
-    { id: db.categoryIdCounter++, name: "Clothing" }
+    { id: db.categoryIdCounter++, title: "Electronics", description: 'Electronic devices and gadgets' },
+    { id: db.categoryIdCounter++, title: "Books", description: 'Books and e-books'  },
+    { id: db.categoryIdCounter++, title: "Clothing", description: 'Apparel and fashion accessories'  }
   );
   // Add shop items (match model: title, description, price, categoryIds)
   db.shopItems.push(

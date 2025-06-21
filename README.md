@@ -37,12 +37,66 @@ npm start
 
 The server will start on port 3000 by default. You can change this by setting the `PORT` environment variable.
 
+### Port Conflict Resolution
+
+If you encounter the error `EADDRINUSE: address already in use :::3000`, you have several options:
+
+1. **Use a different port:**
+   ```
+   PORT=3001 npm start
+   # or use the pre-configured command
+   npm run start:port
+   ```
+
+2. **Kill processes on port 3000:**
+   ```
+   npm run kill-port
+   # or specify a different port
+   npm run kill-port 3001
+   ```
+
+3. **Automatic cleanup:** The `npm start` and `npm run dev` commands now automatically attempt to kill existing processes on port 3000 before starting.
+
+### Development Mode
+
+For development with auto-restart on file changes:
+```
+npm run dev
+```
+
+Or on a different port:
+```
+npm run dev:port
+```
+
 ## Running Tests
 
 Run the following command to execute the tests:
 ```
 npm test
 ```
+
+To run tests with the new refactored test helpers:
+```
+npm run test:refactored
+```
+
+### Test Architecture
+
+The test suite has been refactored to use reusable test helpers and utilities:
+
+- **`tests/utils/testHelpers.js`** - Contains `TestHelpers` class with common test methods and `TestData` object with test data generators
+- **`tests/setupTests.js`** - Global test setup with database reset and helper initialization
+- **Consistent patterns** - All test files now follow the same structure and use the same helper methods
+
+#### Benefits of the Refactored Test Suite:
+
+- ✅ **Reduced Code Duplication**: ~70% reduction in repetitive test code
+- ✅ **Consistent Error Testing**: Standardized error handling tests across all endpoints
+- ✅ **Reusable Test Data**: Centralized test data generators for consistent test scenarios
+- ✅ **Centralized Server Management**: Single place for server lifecycle management
+- ✅ **Easier Maintenance**: Changes to test patterns only need to be made in one place
+- ✅ **Better Readability**: Tests focus on business logic rather than boilerplate code
 
 ## API Endpoints
 

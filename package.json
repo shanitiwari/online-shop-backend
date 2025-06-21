@@ -7,7 +7,13 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest --forceExit",
-    "lint": "eslint ."
+    "test:refactored": "node scripts/test-runner.js",
+    "lint": "eslint .",
+    "start:port": "PORT=3001 node src/index.js",
+    "dev:port": "PORT=3001 nodemon src/index.js",
+    "kill-port": "node scripts/kill-port.js",
+    "prestart": "node scripts/kill-port.js",
+    "predev": "node scripts/kill-port.js"
   },
   "dependencies": {
     "express": "^4.18.2",

@@ -19,7 +19,7 @@ A minimalistic backend web application for an online shop. This application prov
 
 1. Clone the repository:
 ```
-git clone <repository-url>
+git clone https://github.com/shanitiwari/online-shop-backend.git
 cd online-shop-backend
 ```
 

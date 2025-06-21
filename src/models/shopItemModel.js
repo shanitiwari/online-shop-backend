@@ -13,22 +13,27 @@ const shopItemSchema = Joi.object({
 class ShopItemModel {
   // Get all shop items
   static getAll() {
-    return db.shopItems.map(item => {
+    const shopItems = Array.isArray(db.shopItems) ? db.shopItems : [];
+    const categories = Array.isArray(db.categories) ? db.categories : [];
+    return shopItems.map(item => {
       // Get categories for each item
-      const categories = item.categoryIds.map(categoryId => {
-        return db.categories.find(c => c.id === categoryId);
-      }).filter(Boolean); // Remove undefined entries
-      
+      const itemCategories = Array.isArray(item.categoryIds)
+        ? item.categoryIds.map(categoryId => {
+            return categories.find(c => c.id === categoryId);
+          }).filter(Boolean)
+        : [];
       return {
         ...item,
-        categories
+        categories: itemCategories
       };
     });
   }
   
   // Get shop item by ID
   static getById(id) {
-    const shopItem = db.shopItems.find(i => i.id === id);
+    const shopItems = Array.isArray(db.shopItems) ? db.shopItems : [];
+    const categories = Array.isArray(db.categories) ? db.categories : [];
+    const shopItem = shopItems.find(i => i.id === id);
     if (!shopItem) {
       const error = new Error(`Shop item with ID ${id} not found`);
       error.name = 'NotFoundError';
@@ -36,13 +41,15 @@ class ShopItemModel {
     }
     
     // Get categories for the item
-    const categories = shopItem.categoryIds.map(categoryId => {
-      return db.categories.find(c => c.id === categoryId);
-    }).filter(Boolean); // Remove undefined entries
+    const itemCategories = Array.isArray(shopItem.categoryIds)
+      ? shopItem.categoryIds.map(categoryId => {
+          return categories.find(c => c.id === categoryId);
+        }).filter(Boolean)
+      : [];
     
     return {
       ...shopItem,
-      categories
+      categories: itemCategories
     };
   }
   
